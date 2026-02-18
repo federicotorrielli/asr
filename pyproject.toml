@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[project]
+name = "asr"
+version = "0.1.0"
+description = "CLI transcription tool powered by VibeVoice-ASR"
+requires-python = ">=3.12"
+dependencies = [
+    "torch",
+    "accelerate",
+    "vibevoice",
+    "rich",
+    "click",
+    "httpx",
+    "yt-dlp",
+    "soundfile",
+    "torchaudio",
+    "silero-vad",
+    "torchcodec"
+]
+
+[project.scripts]
+asr = "asr:main"
+
+[tool.uv.sources]
+vibevoice = { git = "https://github.com/microsoft/VibeVoice.git" }
