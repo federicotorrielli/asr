@@ -89,3 +89,20 @@ asr output.wav -f json | jq .
 ## Requirements
 
 - `ffmpeg` must be installed and available in your `$PATH` (required for YouTube extraction and audio processing).
+
+## Hardware
+
+Running the full model in `bfloat16` requires significant VRAM due to the 7B+ parameter backbone (Qwen2.5-7B) and long-context capabilities.
+
+**VRAM Calculation:**
+- **Model Weights**: ~15.6 GB (7.8B params @ 2 bytes/param)
+- **CUDA Runtime / Overhead**: ~0.8 GB
+- **Activations (Flash Attn)**: ~1.2 GB
+- **KV Cache (30 min audio)**: ~1.0 GB (~15k tokens)
+
+**Total Required: ~18.6 GB**
+
+| Component | Recommendation |
+| :--- | :--- |
+| **VRAM** | **24 GB** (RTX 3090, 4090, or decent server GPU).<br>_16GB cards (4080, 4060 Ti) will **OOM** unless you implement 8-bit/4-bit quantization._ |
+| **System RAM** | **32 GB+** (Only relevant if falling back to CPU, which is very slow). |
