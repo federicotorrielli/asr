@@ -29,13 +29,7 @@ Requires **Python 3.12+**, **FFmpeg**, and [uv](https://github.com/astral-sh/uv)
 
 2.  **Install:**
     ```bash
-    uv pip install -e .
-    ```
-
-    or just
-
-    ```bash
-    uv sync
+    uv sync -U
     ```
 
     *Note: On CUDA systems, the tool will attempt to auto-install a pre-built `flash-attn` wheel specific to your torch/cuda version on first run.*
@@ -43,34 +37,34 @@ Requires **Python 3.12+**, **FFmpeg**, and [uv](https://github.com/astral-sh/uv)
 ## Usage
 
 ```bash
-asr [INPUT] [OPTIONS]
+uv run asr [INPUT] [OPTIONS]
 ```
 
 ### Examples
 
 **Local file:**
 ```bash
-asr interview.mp3
+uv run asr interview.mp3
 ```
 
 **YouTube video (audio only):**
 ```bash
-asr "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+uv run asr "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 **Generate subtitles (SRT):**
 ```bash
-asr movie.m4a -f srt -o movie.srt
+uv run asr movie.m4a -f srt -o movie.srt
 ```
 
 **With context (hotwords):**
 ```bash
-asr meeting.wav -c "Project Gemini, DeepMind, API"
+uv run asr meeting.wav -c "Project Gemini, DeepMind, API"
 ```
 
 **JSON output (machine readable):**
 ```bash
-asr output.wav -f json | jq .
+uv run asr output.wav -f json | jq .
 ```
 
 ### Options
