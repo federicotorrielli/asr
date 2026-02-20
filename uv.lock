@@ -117,13 +117,11 @@ name = "asr"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "accelerate" },
     { name = "click" },
     { name = "httpx" },
     { name = "rich" },
     { name = "silero-vad" },
     { name = "soundfile" },
-    { name = "torch" },
     { name = "torchaudio" },
     { name = "torchcodec" },
     { name = "vibevoice" },
@@ -132,13 +130,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "accelerate" },
     { name = "click" },
     { name = "httpx" },
     { name = "rich" },
     { name = "silero-vad" },
     { name = "soundfile" },
-    { name = "torch" },
     { name = "torchaudio" },
     { name = "torchcodec" },
     { name = "vibevoice", git = "https://github.com/microsoft/VibeVoice.git" },

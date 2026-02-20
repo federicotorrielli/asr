@@ -11,9 +11,6 @@ version = "0.1.0"
 description = "CLI transcription tool powered by VibeVoice-ASR"
 requires-python = ">=3.12"
 dependencies = [
-    "huggingface-hub",
-    "torch",
-    "accelerate",
     "vibevoice",
     "rich",
     "click",

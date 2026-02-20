@@ -164,6 +164,83 @@ def resolve_input(source: str, tmp_dir: str) -> Path:
     return path
 
 
+# Formats natively supported by libsndfile (soundfile)
+_SOUNDFILE_EXTS = {
+    ".wav",
+    ".flac",
+    ".ogg",
+    ".oga",
+    ".aiff",
+    ".aif",
+    ".aifc",
+    ".raw",
+    ".rf64",
+    ".w64",
+    ".caf",
+    ".sd2",
+    ".au",
+    ".snd",
+    ".nist",
+    ".voc",
+    ".pvf",
+    ".xi",
+    ".htk",
+    ".sds",
+    ".avr",
+    ".wavex",
+    ".svx",
+    ".mpc2k",
+    ".mat4",
+    ".mat5",
+    ".ircam",
+}
+
+
+def ensure_supported_format(audio_path: Path, tmp_dir: str) -> Path:
+    """Convert audio to WAV via ffmpeg if the format isn't supported by soundfile."""
+    if audio_path.suffix.lower() in _SOUNDFILE_EXTS:
+        return audio_path
+
+    import subprocess
+
+    wav_path = Path(tmp_dir) / (audio_path.stem + ".wav")
+    with console.status(
+        f"[bold cyan]🔄 Converting {audio_path.suffix} → .wav…", spinner="dots"
+    ):
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(audio_path),
+                    "-ar",
+                    "16000",
+                    "-ac",
+                    "1",
+                    "-c:a",
+                    "pcm_s16le",
+                    str(wav_path),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except FileNotFoundError:
+            console.print(
+                "[bold red]✗[/] ffmpeg not found. "
+                "Install it to handle m4a/mp3/webm files: "
+                "[bold]apt install ffmpeg[/] or [bold]brew install ffmpeg[/]"
+            )
+            sys.exit(1)
+        except subprocess.CalledProcessError as e:
+            console.print(f"[bold red]✗[/] ffmpeg conversion failed:\n{e.stderr}")
+            sys.exit(1)
+
+    console.print("[green]✓[/] Converted to WAV")
+    return wav_path
+
+
 MAX_CHUNK_S = 30 * 60  # 30 minutes — model handles 60, so 30 gives headroom
 MIN_SILENCE_MS = 700  # minimum silence gap to consider as a split candidate
 VAD_SAMPLE_RATE = 16000  # silero-vad native sample rate
@@ -660,6 +737,9 @@ def main(
         # Resolve input
         audio_path = resolve_input(input_source, tmp_dir)
         console.print(f"[green]✓[/] Audio: [bold]{audio_path.name}[/]")
+
+        # Convert unsupported formats (m4a, mp3, webm, etc.) to WAV
+        audio_path = ensure_supported_format(audio_path, tmp_dir)
 
         # Load model
         with console.status(
