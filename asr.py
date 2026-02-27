@@ -847,13 +847,14 @@ def main(
                 show_speakers=not no_speakers,
             )
 
-        # Output
-        if output_file:
-            Path(output_file).write_text(out, encoding="utf-8")
-            console.print(f"\n[green]✓[/] Saved to [bold]{output_file}[/]")
-        elif fmt == "text" and segments:
-            display_rich(segments, raw_text, elapsed)
-        else:
-            console.print()
-            console.print(out)
-            console.print(f"\n[dim]⏱  Completed in {elapsed:.1f}s[/]")
+        # Output — default to writing a .txt file alongside the input
+        if not output_file:
+            stem = (
+                Path(input_source).stem if not is_url(input_source) else "transcription"
+            )
+            ext = {"json": ".json", "srt": ".srt"}.get(fmt, ".txt")
+            output_file = f"{stem}{ext}"
+
+        Path(output_file).write_text(out, encoding="utf-8")
+        console.print(f"\n[green]✓[/] Saved to [bold]{output_file}[/]")
+        console.print(f"\n[dim]⏱  Completed in {elapsed:.1f}s[/]")
