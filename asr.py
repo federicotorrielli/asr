@@ -1,4 +1,9 @@
-"""ASR CLI — Transcribe audio from files or URLs using VibeVoice-ASR."""
+"""ASR CLI — Transcribe audio from files or URLs.
+
+Supported engines:
+  - vibevoice: Microsoft VibeVoice-ASR (timestamps, speakers, diarization)
+  - omnilingual: Meta Omnilingual-ASR (1600+ languages, plain text)
+"""
 
 import json
 import os
@@ -32,6 +37,7 @@ SPEAKER_COLORS = [
 ]
 
 MODEL_DEFAULT = "microsoft/VibeVoice-ASR"
+OMNI_MODEL_DEFAULT = "omniASR_LLM_Unlimited_7B_v2"
 
 
 def detect_device() -> str:
@@ -549,6 +555,35 @@ def transcribe(
     }
 
 
+def load_model_omni(model_card: str) -> Any:
+    """Load an Omnilingual-ASR inference pipeline."""
+    from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline
+
+    return ASRInferencePipeline(model_card=model_card)
+
+
+def transcribe_omni(
+    pipeline: Any,
+    audio_path: Path,
+    lang: str | None,
+) -> dict[str, Any]:
+    """Run transcription using the Omnilingual-ASR pipeline."""
+    kwargs: dict[str, Any] = {"batch_size": 1}
+    if lang:
+        kwargs["lang"] = [lang]
+
+    t0 = time.perf_counter()
+    results = pipeline.transcribe([str(audio_path)], **kwargs)
+    elapsed = time.perf_counter() - t0
+
+    raw_text = results[0] if results else ""
+    return {
+        "raw_text": raw_text,
+        "segments": [],
+        "elapsed": elapsed,
+    }
+
+
 def format_timestamp_srt(ts: str) -> str:
     """Convert 'MM:SS.ss' or 'HH:MM:SS.ss' to SRT format 'HH:MM:SS,mmm'."""
     try:
@@ -693,7 +728,20 @@ def display_rich(segments: list[dict], raw_text: str, elapsed: float) -> None:
 @click.option("--no-timestamps", is_flag=True, help="Omit timestamps in text output.")
 @click.option("--no-speakers", is_flag=True, help="Omit speaker IDs in text output.")
 @click.option(
-    "--model", default=MODEL_DEFAULT, show_default=True, help="Model name or path."
+    "--model", default=None, help="Model name or path (default depends on engine)."
+)
+@click.option(
+    "-e",
+    "--engine",
+    type=click.Choice(["vibevoice", "omnilingual"], case_sensitive=False),
+    default="vibevoice",
+    show_default=True,
+    help="Transcription engine.",
+)
+@click.option(
+    "--lang",
+    default=None,
+    help="Language code for omnilingual engine (e.g. 'eng_Latn', 'ita_Latn').",
 )
 def main(
     input_source: str,
@@ -704,7 +752,9 @@ def main(
     max_tokens: int,
     no_timestamps: bool,
     no_speakers: bool,
-    model: str,
+    model: str | None,
+    engine: str,
+    lang: str | None,
 ) -> None:
     """Transcribe audio from a file or URL.
 
@@ -714,23 +764,18 @@ def main(
       asr recording.mp3 -f srt -o subtitles.srt
       asr https://youtube.com/watch?v=... -c "VibeVoice, Microsoft"
       asr podcast.m4a --no-speakers --no-timestamps
+      asr recording.wav -e omnilingual --lang eng_Latn
     """
+    is_omni = engine == "omnilingual"
+    model = model or (OMNI_MODEL_DEFAULT if is_omni else MODEL_DEFAULT)
+
+    engine_label = "Omnilingual ASR" if is_omni else "VibeVoice ASR"
     console.print(
         Panel(
-            "[bold bright_cyan]VibeVoice ASR[/] — Speech to Text",
+            f"[bold bright_cyan]{engine_label}[/] — Speech to Text",
             border_style="bright_cyan",
             padding=(0, 2),
         )
-    )
-
-    # Resolve device
-    if device == "auto":
-        device = detect_device()
-    dtype = detect_dtype(device)
-    attn = detect_attention(device)
-
-    console.print(
-        f"[dim]  Device: {device}  •  Dtype: {dtype}  •  Attention: {attn}[/]\n"
     )
 
     with tempfile.TemporaryDirectory(prefix="asr_") as tmp_dir:
@@ -741,18 +786,43 @@ def main(
         # Convert unsupported formats (m4a, mp3, webm, etc.) to WAV
         audio_path = ensure_supported_format(audio_path, tmp_dir)
 
-        # Load model
-        with console.status(
-            "[bold cyan]🔄 Loading model…[/] (this may take a moment on first run)",
-            spinner="dots",
-        ):
-            asr_model, processor = load_model(model, device, dtype, attn)
-        console.print("[green]✓[/] Model loaded")
+        if is_omni:
+            # Omnilingual engine — no device/dtype/attn setup needed
+            console.print(f"[dim]  Model: {model}[/]")
+            if lang:
+                console.print(f"[dim]  Language: {lang}[/]")
+            console.print()
 
-        # Transcribe (auto-chunks if > 20 min)
-        result = transcribe_chunked(
-            asr_model, processor, audio_path, device, max_tokens, context, tmp_dir
-        )
+            with console.status(
+                "[bold cyan]🔄 Loading model…[/] (this may take a moment on first run)",
+                spinner="dots",
+            ):
+                pipeline = load_model_omni(model)
+            console.print("[green]✓[/] Model loaded")
+
+            with console.status("[bold cyan]🎙  Transcribing…", spinner="dots"):
+                result = transcribe_omni(pipeline, audio_path, lang)
+        else:
+            # VibeVoice engine
+            if device == "auto":
+                device = detect_device()
+            dtype = detect_dtype(device)
+            attn = detect_attention(device)
+
+            console.print(
+                f"[dim]  Device: {device}  •  Dtype: {dtype}  •  Attention: {attn}[/]\n"
+            )
+
+            with console.status(
+                "[bold cyan]🔄 Loading model…[/] (this may take a moment on first run)",
+                spinner="dots",
+            ):
+                asr_model, processor = load_model(model, device, dtype, attn)
+            console.print("[green]✓[/] Model loaded")
+
+            result = transcribe_chunked(
+                asr_model, processor, audio_path, device, max_tokens, context, tmp_dir
+            )
 
         console.print("\n[green]✓[/] Transcription complete")
 

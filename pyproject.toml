@@ -19,7 +19,8 @@ dependencies = [
     "soundfile",
     "torchaudio",
     "silero-vad",
-    "torchcodec"
+    "torchcodec",
+    "omnilingual-asr>=0.2.0",
 ]
 
 [project.scripts]

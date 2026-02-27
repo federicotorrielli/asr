@@ -1,12 +1,16 @@
 # asr
 
-A suckless, high-performance CLI tool for audio transcription using **Microsoft VibeVoice-ASR**.
+A suckless, high-performance CLI tool for audio transcription.
+
+Supports two engines:
+- **VibeVoice** (`--engine vibevoice`, default) — Microsoft VibeVoice-ASR with timestamps, speaker diarization, and structured output.
+- **Omnilingual** (`--engine omnilingual`) — Meta Omnilingual-ASR supporting 1600+ languages (plain text output).
 
 It handles local files, direct URLs, and YouTube links with automatic VAD-based chunking for long audio.
 
 ## Features
 
-- **engine**: Powered by `microsoft/VibeVoice-ASR`.
+- **engines**: VibeVoice-ASR (diarization, timestamps) and Omnilingual-ASR (1600+ languages).
 - **fast**: Auto-detects **Flash Attention 2** for maximum inference speed on CUDA.
 - **smart**: Uses **Silero VAD** to intelligently split long audio (>30m) at silence boundaries, preventing context loss and hallucinations.
 - **versatile**:
@@ -33,6 +37,8 @@ Requires **Python 3.12+**, **FFmpeg**, and [uv](https://github.com/astral-sh/uv)
     ```
 
     *Note: On CUDA systems, the tool will attempt to auto-install a pre-built `flash-attn` wheel specific to your torch/cuda version on first run.*
+
+    *Note: The omnilingual engine requires `libsndfile` (`apt install libsndfile1` / `brew install libsndfile`).*
 
 ## Usage
 
@@ -67,6 +73,16 @@ uv run asr meeting.wav -c "Project Gemini, DeepMind, API"
 uv run asr output.wav -f json | jq .
 ```
 
+**Omnilingual engine (1600+ languages):**
+```bash
+uv run asr recording.wav -e omnilingual --lang eng_Latn
+```
+
+**Omnilingual with Italian:**
+```bash
+uv run asr audio_italiano.wav -e omnilingual --lang ita_Latn
+```
+
 ### Options
 
 | Option | Description |
@@ -74,11 +90,13 @@ uv run asr output.wav -f json | jq .
 | `INPUT` | Path to file, HTTP URL, or YouTube URL. |
 | `-f, --format` | Output format: `text` (default), `json`, `srt`. |
 | `-o, --output` | Save output to a specific file. |
-| `-c, --context` | Hotwords/context string to guide the model. |
+| `-c, --context` | Hotwords/context string to guide the model (vibevoice only). |
+| `-e, --engine` | Engine: `vibevoice` (default) or `omnilingual`. |
+| `--lang` | Language code for omnilingual (e.g. `eng_Latn`, `ita_Latn`). |
 | `--device` | Force device: `auto` (default), `cuda`, `mps`, `cpu`. |
-| `--model` | HuggingFace model hub path (default: `microsoft/VibeVoice-ASR`). |
-| `--no-timestamps`| Hide timestamps in text output. |
-| `--no-speakers` | Hide speaker IDs in text output. |
+| `--model` | Model name or path (default depends on engine). |
+| `--no-timestamps`| Hide timestamps in text output (vibevoice only). |
+| `--no-speakers` | Hide speaker IDs in text output (vibevoice only). |
 
 ## Requirements
 
